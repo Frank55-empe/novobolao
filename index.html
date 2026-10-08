@@ -168,8 +168,16 @@
         <input id="nome" type="text" autocomplete="name" maxlength="80" placeholder="Ex.: Maria da Silva">
       </div>
       <div class="campo">
+        <label for="apelido">Nome no jogo</label>
+        <input id="apelido" type="text" autocomplete="nickname" maxlength="40" placeholder="Como você quer aparecer na classificação">
+      </div>
+      <div class="campo">
         <label for="whatsapp">WhatsApp com DDD</label>
         <input id="whatsapp" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="15" placeholder="(35) 99999-9999">
+      </div>
+      <div class="campo">
+        <label for="cidade">Sua cidade</label>
+        <input id="cidade" type="text" autocomplete="address-level2" maxlength="60" placeholder="Ex.: Ijaci">
       </div>
     </section>
 
@@ -311,10 +319,14 @@ function mostrar(texto, tipo) {
 /* ---- Envio ---- */
 $("btnEnviar").addEventListener("click", async () => {
   const nome = $("nome").value.trim().replace(/\s+/g, " ");
+  const apelido = $("apelido").value.trim().replace(/\s+/g, " ");
+  const cidade = $("cidade").value.trim().replace(/\s+/g, " ");
   const zap = $("whatsapp").value.replace(/\D/g, "");
 
   if (nome.length < 3 || nome.indexOf(" ") === -1) return mostrar("Informe nome e sobrenome.", "erro");
+  if (apelido.length < 2) return mostrar("Informe o nome no jogo.", "erro");
   if (zap.length < 10 || zap.length > 11) return mostrar("Informe o WhatsApp com DDD.", "erro");
+  if (cidade.length < 2) return mostrar("Informe sua cidade.", "erro");
   if (selecionadas.size !== CONFIG.TOTAL_DEZENAS) {
     return mostrar("Marque exatamente " + CONFIG.TOTAL_DEZENAS + " dezenas (faltam " + (CONFIG.TOTAL_DEZENAS - selecionadas.size) + ").", "erro");
   }
@@ -332,7 +344,7 @@ $("btnEnviar").addEventListener("click", async () => {
     const resp = await fetch(CONFIG.APPS_SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" }, // evita preflight CORS
-      body: JSON.stringify({ nome, whatsapp: zap, dezenas })
+      body: JSON.stringify({ nome, apelido, whatsapp: zap, cidade, dezenas })
     });
     const dados = await resp.json();
     if (!dados.ok) throw new Error(dados.erro || "Não foi possível registrar.");
