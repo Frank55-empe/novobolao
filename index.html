@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bolão Entre Amigo do Enoquis</title>
+<title>Bolão da Mega</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
@@ -120,6 +120,8 @@
     padding: 15px;
   }
   button.btn:disabled { opacity: .55; cursor: wait; }
+  button.btn.sair { margin-left: auto; color: var(--erro); border-color: var(--erro); }
+  button.btn.sair.largo { width: 100%; margin-left: 0; }
   .msg { min-height: 1.4em; margin: 10px 0 0; font-weight: 600; }
   .msg.erro { color: var(--erro); }
   .msg.ok { color: var(--verde); }
@@ -155,12 +157,28 @@
 
 <main class="volante">
   <header class="topo">
-    <h1>Bolão Entre Amigo do Enoquis</h1>
+    <h1>Bolão da Mega</h1>
     <p>Preencha seus dados, marque exatamente 10 dezenas e pague via Pix.</p>
   </header>
 
+  <!-- TELA PRINCIPAL -->
+  <div id="telaInicial">
+    <section>
+      <h2>Bem-vindo!</h2>
+      <p style="margin:0 0 14px">Marque 10 dezenas, pague via Pix e concorra aos prêmios do bolão.</p>
+      <button type="button" id="btnParticipar" class="btn principal">Participar do bolão</button>
+    </section>
+
+    <!-- CLASSIFICAÇÃO -->
+    <section>
+      <h2>Classificação</h2>
+      <button type="button" id="btnRanking" class="btn">Ver classificação</button>
+      <div id="ranking"></div>
+    </section>
+  </div>
+
   <!-- ETAPA 1: cadastro + cartela -->
-  <div id="telaCadastro">
+  <div id="telaCadastro" class="oculto">
     <section>
       <h2>Seus dados</h2>
       <div class="campo">
@@ -190,6 +208,7 @@
       <div class="acoes-grade">
         <button type="button" id="btnSurpresinha" class="btn">Surpresinha</button>
         <button type="button" id="btnLimpar" class="btn">Limpar</button>
+        <button type="button" id="btnSair" class="btn sair">Sair</button>
       </div>
     </section>
 
@@ -226,15 +245,9 @@
     </section>
     <section>
       <button type="button" id="btnNova" class="btn principal">Fazer outra cartela</button>
+      <button type="button" id="btnSairConfirmacao" class="btn sair largo" style="margin-top:10px">Sair</button>
     </section>
   </div>
-
-  <!-- CLASSIFICAÇÃO -->
-  <section>
-    <h2>Classificação</h2>
-    <button type="button" id="btnRanking" class="btn">Ver classificação</button>
-    <div id="ranking"></div>
-  </section>
 </main>
 
 <script>
@@ -244,7 +257,7 @@ const CONFIG = {
   APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbxjgUI0fbuKuEzTqA7B2_xdXU4Y8N8MBXks6YculE4XBKJFnl3qtnOeDTJZP4sNx6J3/exec",
   PIX_CHAVE: "35991717912",
   PIX_NOME: "Frank de Souza Borges",
-  PIX_VALOR: "R$35,00",                 // Ex.: "R$ 35,00" (deixe "" para não mostrar)
+  PIX_VALOR: "",                 // Ex.: "R$ 10,00" (deixe "" para não mostrar)
   WHATSAPP_ORGANIZADOR: "5535991717912", // 55 + DDD + número (para enviar o comprovante)
   TOTAL_DEZENAS: 10,
   MAX_NUMERO: 60
@@ -401,6 +414,43 @@ $("btnNova").addEventListener("click", () => {
   $("telaCadastro").classList.remove("oculto");
   $("msgCopia").textContent = "";
   window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+/* ---- Navegação: tela principal <-> cartela ---- */
+function irParaTelaPrincipal() {
+  $("telaCadastro").classList.add("oculto");
+  $("telaConfirmacao").classList.add("oculto");
+  $("telaInicial").classList.remove("oculto");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function limparTudo() {
+  selecionadas.clear();
+  ["nome", "apelido", "whatsapp", "cidade"].forEach((id) => { $(id).value = ""; });
+  atualizar();
+  mostrar("", "");
+  $("msgCopia").textContent = "";
+}
+
+$("btnParticipar").addEventListener("click", () => {
+  $("telaInicial").classList.add("oculto");
+  $("telaCadastro").classList.remove("oculto");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
+
+// Sair do painel de palpites: volta à tela principal (pede confirmação se há algo preenchido)
+$("btnSair").addEventListener("click", () => {
+  const algoPreenchido = selecionadas.size > 0 ||
+    ["nome", "apelido", "whatsapp", "cidade"].some((id) => $(id).value.trim() !== "");
+  if (algoPreenchido && !window.confirm("Sair da cartela? As dezenas e os dados preenchidos serão descartados.")) return;
+  limparTudo();
+  irParaTelaPrincipal();
+});
+
+// Sair da tela de confirmação/Pix: a cartela já foi registrada, então não precisa confirmar
+$("btnSairConfirmacao").addEventListener("click", () => {
+  limparTudo();
+  irParaTelaPrincipal();
 });
 
 /* ---- Classificação ---- */
