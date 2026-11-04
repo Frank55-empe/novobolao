@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bolão da Mega dos Amigos do Bar do Enoquis </title>
+<title>Bolão da Mega</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
@@ -144,9 +144,18 @@
   .linha-botoes { display: flex; flex-wrap: wrap; gap: 8px; }
   a.btn { display: inline-block; text-decoration: none; text-align: center; }
 
-  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 15px; }
-  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--linha); vertical-align: top; }
-  td.num { text-align: right; font-weight: 600; }
+  .sorteios { list-style: none; margin: 10px 0 0; padding: 0; font-size: 14px; }
+  .sorteios li { padding: 5px 0; border-bottom: 1px solid var(--linha); }
+  .banner { background: var(--ouro); color: var(--tinta); padding: 10px 12px; border-radius: 4px; font-weight: 600; margin: 12px 0 0; }
+  .part { border: 2px solid var(--linha); border-radius: 6px; padding: 10px; margin-top: 10px; background: #fff; }
+  .part.vencedor { border-color: var(--ouro); box-shadow: 0 0 0 2px var(--ouro); }
+  .part-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .part-nome { font-weight: 600; }
+  .part-total { font-family: var(--fonte-titulo); font-size: 24px; color: var(--verde); white-space: nowrap; }
+  .mini { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0 0; padding: 0; list-style: none; }
+  .mini li { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; font-size: 13px; font-weight: 600; border: 1.5px solid var(--linha); background: var(--verde-claro); color: var(--verde); }
+  .mini li.sai { background: var(--verde); border-color: var(--verde); color: #fff; }
+  .por-sorteio { font-size: 13px; margin: 8px 0 0; }
   .oculto { display: none !important; }
   @media (prefers-reduced-motion: no-preference) {
     .dezena { transition: background .12s, color .12s; }
@@ -157,7 +166,7 @@
 
 <main class="volante">
   <header class="topo">
-    <h1>Bolão da Mega dos Amigos do Bar do Enoquis</h1>
+    <h1>Bolão da Mega</h1>
     <p>Preencha seus dados, marque exatamente 10 dezenas e pague via Pix.</p>
   </header>
 
@@ -454,6 +463,13 @@ $("btnSairConfirmacao").addEventListener("click", () => {
 });
 
 /* ---- Classificação ---- */
+function criar(tag, classe, texto) {
+  const e = document.createElement(tag);
+  if (classe) e.className = classe;
+  if (texto !== undefined) e.textContent = texto;
+  return e;
+}
+
 $("btnRanking").addEventListener("click", async () => {
   const box = $("ranking");
   if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(CONFIG.APPS_SCRIPT_URL)) {
@@ -462,37 +478,62 @@ $("btnRanking").addEventListener("click", async () => {
   }
   box.textContent = "Carregando...";
   try {
-    const resp = await fetch(CONFIG.APPS_SCRIPT_URL + "?action=ranking");
+    const resp = await fetch(CONFIG.APPS_SCRIPT_URL + "?action=ranking&t=" + Date.now(), { cache: "no-store" });
     const d = await resp.json();
     if (!d.ok) throw new Error(d.erro || "Erro ao carregar.");
     box.innerHTML = "";
 
-    const info = document.createElement("p");
-    info.className = "aviso";
-    info.textContent = d.sorteio && d.sorteio.length
-      ? "Concurso " + d.concurso + " — sorteadas: " + d.sorteio.map(pad).join(" ")
-      : "Aguardando o resultado do sorteio.";
-    box.appendChild(info);
+    // Aviso de vencedor(es)
+    if (d.encerrado) {
+      const vencedores = d.lista.filter((r) => r.vencedor);
+      const v = vencedores[0];
+      box.appendChild(criar("p", "banner",
+        "🏆 " + (vencedores.length > 1 ? "Vencedores: " : "Vencedor: ") +
+        vencedores.map((r) => r.nome).join(", ") +
+        " — completou as " + d.totalDezenas + " dezenas no sorteio " + v.completouEm +
+        (v.completouConcurso ? " (Concurso " + v.completouConcurso + ")" : "") + "."));
+    }
+
+    // Sorteios já realizados
+    if (!d.sorteios.length) {
+      box.appendChild(criar("p", "aviso", "Aguardando o resultado do primeiro sorteio."));
+    } else {
+      const ul = criar("ul", "sorteios");
+      d.sorteios.forEach((s) => {
+        ul.appendChild(criar("li", "",
+          "Sorteio " + s.numero + (s.concurso ? " · Concurso " + s.concurso : "") +
+          (s.data ? " · " + s.data : "") + " — " + s.dezenas.map(pad).join(" ")));
+      });
+      box.appendChild(ul);
+    }
 
     if (!d.lista.length) {
-      const p = document.createElement("p");
-      p.textContent = "Nenhum participante com pagamento confirmado ainda.";
-      box.appendChild(p);
+      box.appendChild(criar("p", "", "Nenhum participante com pagamento confirmado ainda."));
       return;
     }
-    const tb = document.createElement("table");
-    tb.innerHTML = "<thead><tr><th>Participante</th><th>Dezenas</th><th class='num'>Acertos</th></tr></thead>";
-    const body = document.createElement("tbody");
-    d.lista.forEach((r) => {
-      const tr = document.createElement("tr");
-      const a = document.createElement("td"); a.textContent = r.nome;
-      const b = document.createElement("td"); b.textContent = r.dezenas;
-      const c = document.createElement("td"); c.className = "num"; c.textContent = r.acertos;
-      tr.append(a, b, c);
-      body.appendChild(tr);
+
+    // Participantes (o servidor envia somente cartelas com pagamento confirmado)
+    box.appendChild(criar("p", "aviso", d.lista.length + (d.lista.length === 1
+      ? " participante com pagamento confirmado" : " participantes com pagamento confirmado")));
+    d.lista.forEach((r, i) => {
+      const card = criar("article", "part" + (r.vencedor ? " vencedor" : ""));
+
+      const topo = criar("div", "part-topo");
+      topo.appendChild(criar("span", "part-nome", (i + 1) + "º  " + r.nome + (r.vencedor ? "  🏆" : "")));
+      topo.appendChild(criar("span", "part-total", r.total + "/" + d.totalDezenas));
+      card.appendChild(topo);
+
+      const mini = criar("ul", "mini");
+      mini.setAttribute("aria-label", "Dezenas do participante; as destacadas já foram sorteadas");
+      r.dezenas.forEach((z) => mini.appendChild(criar("li", z.s ? "sai" : "", pad(z.n))));
+      card.appendChild(mini);
+
+      if (r.porSorteio.length) {
+        card.appendChild(criar("p", "por-sorteio",
+          "Acertos por sorteio: " + r.porSorteio.map((v, k) => "S" + (k + 1) + " +" + v).join(" · ")));
+      }
+      box.appendChild(card);
     });
-    tb.appendChild(body);
-    box.appendChild(tb);
   } catch (e) {
     box.textContent = e.message || "Não foi possível carregar a classificação.";
   }
