@@ -157,6 +157,12 @@
   .mini li.sai { background: var(--verde); border-color: var(--verde); color: #fff; }
   .por-sorteio { font-size: 13px; margin: 8px 0 0; }
   .oculto { display: none !important; }
+  .rodape-admin { padding: 12px 18px 18px; text-align: center; }
+  button.link-admin { font: inherit; font-size: 14px; background: none; border: 0; color: var(--verde); text-decoration: underline; cursor: pointer; padding: 8px; opacity: .8; }
+  dialog.admin { border: 0; border-radius: 6px; padding: 0; width: min(92vw, 380px); box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+  dialog.admin::backdrop { background: rgba(0,0,0,.6); }
+  dialog.admin form { padding: 18px; background: var(--papel); }
+  dialog.admin h2 { margin-top: 0; }
   @media (prefers-reduced-motion: no-preference) {
     .dezena { transition: background .12s, color .12s; }
   }
@@ -184,6 +190,9 @@
       <button type="button" id="btnRanking" class="btn">Ver classificação</button>
       <div id="ranking"></div>
     </section>
+    <div class="rodape-admin">
+      <button type="button" id="btnAdmin" class="link-admin">Área do administrador</button>
+    </div>
   </div>
 
   <!-- ETAPA 1: cadastro + cartela -->
@@ -259,11 +268,26 @@
   </div>
 </main>
 
+<dialog id="dlgAdmin" class="admin" aria-labelledby="tituloAdmin">
+  <form method="dialog" id="formAdmin">
+    <h2 id="tituloAdmin">Área do administrador</h2>
+    <div class="campo">
+      <label for="senhaAdmin">Senha</label>
+      <input id="senhaAdmin" type="password" autocomplete="current-password" placeholder="Senha do administrador">
+    </div>
+    <div class="acoes-grade" style="margin-top:0">
+      <button type="submit" id="btnEntrarAdmin" class="btn principal" style="width:auto;flex:1;font-size:16px;padding:12px">Entrar</button>
+      <button type="button" id="btnCancelarAdmin" class="btn">Cancelar</button>
+    </div>
+    <p id="msgAdmin" class="msg" role="alert"></p>
+  </form>
+</dialog>
+
 <script>
 /* ================== CONFIGURAÇÃO (edite aqui) ================== */
 const CONFIG = {
   // Cole aqui a URL do aplicativo da Web (termina em /exec)
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbzlJ1bMfDxNBnyK83SXBGgfXJgWhsDZki-knBlRRGQ76ZGRk5cIoSa-sKukm9KKeHNV/exec",
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbz0XAbPcCURUhIfqaRX8cJTTLI2pP2jn5dcHZ5mToWhVb5FaGx8UHlyNB4QPILnaCgP/exec",
   PIX_CHAVE: "35991717912",
   PIX_NOME: "Frank de Souza Borges",
   PIX_VALOR: "",                 // Ex.: "R$ 10,00" (deixe "" para não mostrar)
@@ -536,6 +560,59 @@ $("btnRanking").addEventListener("click", async () => {
     });
   } catch (e) {
     box.textContent = e.message || "Não foi possível carregar a classificação.";
+  }
+});
+
+/* ---- Acesso do administrador: a senha é conferida no servidor ---- */
+const dlgAdmin = $("dlgAdmin");
+
+$("btnAdmin").addEventListener("click", () => {
+  $("senhaAdmin").value = "";
+  $("msgAdmin").textContent = "";
+  $("msgAdmin").className = "msg";
+  if (typeof dlgAdmin.showModal === "function") dlgAdmin.showModal();
+  else dlgAdmin.setAttribute("open", "");
+  $("senhaAdmin").focus();
+});
+
+$("btnCancelarAdmin").addEventListener("click", () => {
+  $("senhaAdmin").value = "";
+  dlgAdmin.close();
+});
+
+$("formAdmin").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const senha = $("senhaAdmin").value;
+  const msg = $("msgAdmin");
+  const erro = (t) => { msg.textContent = t; msg.className = "msg erro"; };
+
+  if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(CONFIG.APPS_SCRIPT_URL)) return erro("Aplicativo ainda não conectado à planilha.");
+  if (!senha) return erro("Digite a senha.");
+
+  const btn = $("btnEntrarAdmin");
+  btn.disabled = true;
+  btn.textContent = "Verificando...";
+  msg.textContent = "";
+  try {
+    const resp = await fetch(CONFIG.APPS_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ acao: "login_admin", senha })
+    });
+    const d = await resp.json();
+    if (!d.ok) throw new Error(d.erro || "Não foi possível entrar.");
+    // Guarda só o código de sessão (expira sozinho); a senha não é guardada
+    try {
+      sessionStorage.setItem("bolao_admin_token", d.token);
+      sessionStorage.setItem("bolao_admin_url", CONFIG.APPS_SCRIPT_URL);
+    } catch (e) {}
+    $("senhaAdmin").value = "";
+    window.location.href = "admin.html";
+  } catch (e) {
+    erro(e.message || "Falha de conexão.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Entrar";
   }
 });
 
