@@ -158,6 +158,7 @@
   .por-sorteio { font-size: 13px; margin: 8px 0 0; }
   .oculto { display: none !important; }
   .rodape-admin { padding: 12px 18px 18px; text-align: center; }
+  a.btn.largo { display: block; width: 100%; }
   button.link-admin { font: inherit; font-size: 14px; background: none; border: 0; color: var(--verde); text-decoration: underline; cursor: pointer; padding: 8px; opacity: .8; }
   dialog.admin { border: 0; border-radius: 6px; padding: 0; width: min(92vw, 380px); box-shadow: 0 10px 40px rgba(0,0,0,.5); }
   dialog.admin::backdrop { background: rgba(0,0,0,.6); }
@@ -187,12 +188,24 @@
     <!-- CLASSIFICAÇÃO -->
     <section>
       <h2>Classificação</h2>
-      <button type="button" id="btnRanking" class="btn">Ver classificação</button>
+      <button type="button" id="btnRanking" class="btn" aria-expanded="false" aria-controls="ranking">Ver classificação</button>
       <div id="ranking"></div>
     </section>
     <div class="rodape-admin">
-      <button type="button" id="btnAdmin" class="link-admin">Área do administrador</button>
+      <button type="button" id="btnSairApp" class="btn">Sair do aplicativo</button>
+      <div><button type="button" id="btnAdmin" class="link-admin">Área do administrador</button></div>
     </div>
+  </div>
+
+  <!-- TELA DE DESPEDIDA -->
+  <div id="telaSaida" class="oculto">
+    <section style="text-align:center">
+      <h2 style="font-size:34px">Até breve! 🍀</h2>
+      <p style="margin:0 0 10px;font-weight:600">Obrigado por participar do Bolão da Mega!</p>
+      <p style="margin:0 0 16px">Volte sempre: a cada sorteio da Mega as dezenas saem, as cartelas são marcadas e a classificação muda. Acompanhe e torça pela sua cartela!</p>
+      <button type="button" id="btnVoltarSaida" class="btn principal">Voltar ao bolão</button>
+      <p style="margin:14px 0 0"><a id="linkConvidar" class="btn largo" target="_blank" rel="noopener">Chamar um amigo pelo WhatsApp</a></p>
+    </section>
   </div>
 
   <!-- ETAPA 1: cadastro + cartela -->
@@ -453,9 +466,24 @@ $("btnNova").addEventListener("click", () => {
 function irParaTelaPrincipal() {
   $("telaCadastro").classList.add("oculto");
   $("telaConfirmacao").classList.add("oculto");
+  $("telaSaida").classList.add("oculto");
   $("telaInicial").classList.remove("oculto");
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
+
+// Tela de despedida com convite para voltar sempre
+function irParaDespedida() {
+  $("telaCadastro").classList.add("oculto");
+  $("telaConfirmacao").classList.add("oculto");
+  $("telaInicial").classList.add("oculto");
+  $("telaSaida").classList.remove("oculto");
+  const convite = "Estou participando do Bolão da Mega! Entre também: " + window.location.origin + window.location.pathname.replace(/admin\.html$/, "");
+  $("linkConvidar").href = "https://wa.me/?text=" + encodeURIComponent(convite);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+$("btnSairApp").addEventListener("click", irParaDespedida);
+$("btnVoltarSaida").addEventListener("click", irParaTelaPrincipal);
 
 function limparTudo() {
   selecionadas.clear();
@@ -483,7 +511,7 @@ $("btnSair").addEventListener("click", () => {
 // Sair da tela de confirmação/Pix: a cartela já foi registrada, então não precisa confirmar
 $("btnSairConfirmacao").addEventListener("click", () => {
   limparTudo();
-  irParaTelaPrincipal();
+  irParaDespedida();
 });
 
 /* ---- Classificação ---- */
@@ -494,7 +522,7 @@ function criar(tag, classe, texto) {
   return e;
 }
 
-$("btnRanking").addEventListener("click", async () => {
+async function carregarClassificacao() {
   const box = $("ranking");
   if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(CONFIG.APPS_SCRIPT_URL)) {
     box.textContent = "Aplicativo ainda não conectado à planilha.";
@@ -561,6 +589,26 @@ $("btnRanking").addEventListener("click", async () => {
   } catch (e) {
     box.textContent = e.message || "Não foi possível carregar a classificação.";
   }
+}
+
+// Alternador: "Ver classificação" carrega a lista atual; "Esconder classificação" recolhe o painel
+let classificacaoAberta = false;
+$("btnRanking").addEventListener("click", async () => {
+  const btn = $("btnRanking");
+  const box = $("ranking");
+  if (classificacaoAberta) {
+    box.classList.add("oculto");
+    box.innerHTML = "";
+    classificacaoAberta = false;
+    btn.textContent = "Ver classificação";
+    btn.setAttribute("aria-expanded", "false");
+    return;
+  }
+  classificacaoAberta = true;
+  box.classList.remove("oculto");
+  btn.textContent = "Esconder classificação";
+  btn.setAttribute("aria-expanded", "true");
+  await carregarClassificacao();
 });
 
 /* ---- Acesso do administrador: a senha é conferida no servidor ---- */
